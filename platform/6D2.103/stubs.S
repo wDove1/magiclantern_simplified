@@ -88,8 +88,78 @@ THUMB_FN(0xe04e5a8c, _FIO_RemoveFile)
 THUMB_FN(0xe04e6392, _FIO_RenameFile)
 THUMB_FN(0xe04e663c,  FIO_Flush)               // to be called after FIO_CloseFile?
 
+/** GUI **/
+THUMB_FN(0xe00dc454,  GUI_Control)
+THUMB_FN(0xe04cbed0,  SetGUIRequestMode)
+THUMB_FN(0xe0093574,  gui_init_end)
+THUMB_FN(0xe00dc2aa,  gui_main_task)
 
-////////////////////////////////
-// filled these in as I went along, be sure to check for duplicates above,
-// I might copy-paste badly into there, these ones should be preferred:
+/** GUI timers **/
+THUMB_FN(0xe04e2ee2,  CancelTimer)            /* from error message */
+THUMB_FN(0xe0625d1e,  SetHPTimerAfterNow)     /* from error message */
+THUMB_FN(0xe0625d72,  SetHPTimerNextTick)     /* same "worker" function as SetHPTimerAfterNow */
+THUMB_FN(0xe04e2e2c,  SetTimerAfter)          /* from error message */
+THUMB_FN(0xe06e3cb8,  CancelDateTimer)
+
+/** Interrupts **/
+DATA_PTR(    0x4030,  pre_isr_hook)
+DATA_PTR(    0x4034,  post_isr_hook)
+DATA_PTR(   0x65a08,  isr_table_handler)
+DATA_PTR(   0x65a0c,  isr_table_param)
+THUMB_FN(0xe015fc98,  cli_spin_lock)          /* used in AllocateMemory/FreeMemory and others */
+
+/** MPU communication **/
+THUMB_FN(0xe01f67aa,  mpu_send)                  // "dwSize < TXBD_DATA_SIZE"
+THUMB_FN(0xe064488a,  mpu_recv)                  // passed as last argument by InitializeIntercom and eventually stored into mpu_recv_cbr
+DATA_PTR(    0x7c24,  mpu_recv_cbr)              // mpu_recv is called indirectly through this function pointer
+DATA_PTR(   0x80ec4,  mpu_send_ring_buffer)      // ring buffer used in mpu_send
+DATA_PTR(    0x7c08,  mpu_send_ring_buffer_tail) // ring buffer index incremented in mpu_send
+DATA_PTR(   0x80d84,  mpu_recv_ring_buffer)      // ring buffer used in SIO3_ISR, subroutine that processes two chars at a time
+DATA_PTR(    0x7c00,  mpu_recv_ring_buffer_tail) // ring buffer index incremented in the above subroutine
+
+/** Misc **/
+THUMB_FN(0xdf009338,  vsnprintf)              /* called near dmstart; references "01234567", "0123456789", "0123456789abcdef"
+                                                 and "0123456789ABCDEF"; second arg is size; the one called by DebugMsg only knows %s */
+
+
+THUMB_FN(0xdf0031a3,  get_task_by_id) // called indirectly by task_create and functions using string "TASK Name"
+THUMB_FN(0xdf004041,  _get_task_info_by_id)
+NSTUB(    0x4f40,  dm_names) // in DebugMsg, before the 1st loop target
+
+NSTUB(   0x20054,  sd_device) // written to in SD_DeviceCreate
+NSTUB(    0x4800,  gui_main_struct) // See function using "Queue Clear event" string
+                                    // There's a base of struct, and some refs to fields via offsets.
+                                    // Find the right one.
+THUMB_FN(0xe00dc4ea,  GUI_ChangeMode) // "GUI_ChangeMode:%d" string
+THUMB_FN(0xe04e165c,  DispSensorStart) // 0xe7ec looks to be a bool for whether Sensor is started
+THUMB_FN(0xe04e3fe4,  DeleteMemorySuite)
+THUMB_FN(0xe04e4224,  CreateMemorySuite)
+THUMB_FN(0xe04e3750,  CreateMemoryChunk) // called from CreateMemorySuite
+//NSTUB(0x,  GetSizeOfMemorySuite) // not needed, but I found it along the way
+THUMB_FN(0xdf008515,  take_semaphore) // Fairly sure. Same function sig and followed by give_semaphore
+THUMB_FN(0xdf00858f,  give_semaphore)
+THUMB_FN(0xdf008419,  create_named_semaphore) // also see df00b114, very similar, but df008418 is closer to 50D create_named_semaphore.
+                                              // Complicated by there being df00b648, which wraps 8418 with an extra assert possible,
+                                              // and e0426a20, which is what most sites call, which calls 8418 - but thunked.
+                                              // In theory that means DryOS could replace the underlying create_named_semaphore
+                                              // at run-time.  No evidence that they do.
+
+THUMB_FN(0xe032c222,  gui_change_mode) // GUI_ChangeMode_Post
+THUMB_FN(0xe032a9c8,  gui_massive_event_loop) // various "GUICMD_"* strings
+THUMB_FN(0xe009a070,  gui_init_event) // "-> handleGuiInit"
+THUMB_FN(0xe04e3cfe,  AddMemoryChunk) // called before " 32(Src,bytes,Unit)=(%#lx,%#lx,%#lx)" in many places; see also hAddSuite
+                                      // maybe 0xe04ba536? Similar, except it returns void, not int.
+                                      // Also see 0xe04ba494, v. similar but diff struct offsets
+THUMB_FN(0xe04e3d82,  GetFirstChunkFromSuite)                  // AJ_PackMemory_PackMem_p3
+THUMB_FN(0xe04e4652,  GetNextMemoryChunk)                      // AJ_PackMemory_PackMem.c_IsChunkSignature_p2
+THUMB_FN(0xe04e3b9c,  GetMemoryAddressOfMemoryChunk)           // AJ_PackMemory_PackMem.c_IsChunkSignature - 200D uses "MemChunk" directly
+THUMB_FN(0xe066ab6e,  AllocateMemoryResource)                  // m_pfAllocMemoryCBR
+THUMB_FN(0xe066ab9c,  AllocateContinuousMemoryResource)        // m_pfContAllocMemoryCBR
+THUMB_FN(0xe066ac42,  FreeMemoryResource)                      // m_pfFreeMemoryCBR
+THUMB_FN(0xdf00b1d9,  msg_queue_receive) // "SystemIF::KerQueue.c" useful for finding some of these msg_ functions
+
+
+
+//////
+// SJE stuff that's not required but can be useful
 THUMB_FN(0xe06171f0,  debug_assert) // DRYOS_ASSERT_HANDLER related
