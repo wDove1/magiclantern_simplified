@@ -2,11 +2,11 @@
  * Entry points into the firmware image.
  *
  * These are the functions that we can call from our tasks
- * in the Canon 1.0.1 firmware for the EOS 200D.
+ * in the Canon 1.0.5 firmware for the EOS 6D Mark II.
  *
  */
 /*
- * Copyright (C) 2018 Magic Lantern Team
+ * Copyright (C) 2021 Magic Lantern Team
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
