@@ -205,7 +205,34 @@ THUMB_FN(0xe04c76f4, RefreshVrmsSurface) // "Call RefreshVrmsSurface"
 DATA_PTR(   0x100cc, display_refresh_needed) // if 0, RefreshVrmsSurface() does nothing
 THUMB_FN(0xe022d5cc, XimrExe) // trigger Ximr unit to execute (HW compositor, partially understood)
 
+DATA_PTR(   0x100bc, bmp_vram_info) // Used in function with string "B:/YCC_A_%02d.bin".
+
+DATA_PTR(   0x100b8, _rgb_vram_info) // Used in many places, written to in "InitializeScreen"
+                                     // At least for 200D, this is BGRA buffer, earlier in the render
+                                     // chain than the YUV ones.  But, changes made to it will not
+                                     // render until a refresh occurs (can manually trigger via RefreshVrmsSurface()),
+                                     // but direct refresh via XimrExe() is simpler (we think this tells
+                                     // the renderer peripheral to take the RGB data and update the screen(s).
+
+DATA_PTR(   0x100d8,  display_output_mode) // on 200D, 1: 960x540, anything else, 720x480
+
+NSTUB(0x56500000,  LCD_Palette) // in InitializeBitmapDisplayDevice, right after 0xc0f14800
+                                // SJE FIXME fake address in safe writable region, may not exist
+                                // on 200D (doesn't seem to use indexed colour anywhere)
+
+DATA_PTR(    0x412c,  task_dispatch_hook)
+NSTUB(0x56500000,  PlayMovieGuideApp_handler) // needed for CONFIG_QEMU, unknown
+                                              // SJE FIXME
+DATA_PTR(    0xe789,  additional_version) // this gets written to in early code.  Pick a safe area!
+THUMB_FN(0xe04e4d74, _prop_request_change)
+THUMB_FN(0xdf0070c5,  dm_set_store_level) // called by "dmstore"
+                                          // Called in init_task(), shortly before ICU Firmware version string
+                                          // is logged.
+THUMB_FN(0xdf00707d,  dm_set_print_level)
+THUMB_FN(0xdf00325d,  task_trampoline)
+
 
 //////
 // SJE stuff that's not required but can be useful
 THUMB_FN(0xe06171f0,  debug_assert) // DRYOS_ASSERT_HANDLER related
+THUMB_FN(0xe04eb6c4, uart_printf) // trigger Ximr unit to execute (HW compositor, partially understood)
