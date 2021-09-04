@@ -148,16 +148,62 @@ THUMB_FN(0xe032c222,  gui_change_mode) // GUI_ChangeMode_Post
 THUMB_FN(0xe032a9c8,  gui_massive_event_loop) // various "GUICMD_"* strings
 THUMB_FN(0xe009a070,  gui_init_event) // "-> handleGuiInit"
 THUMB_FN(0xe04e3cfe,  AddMemoryChunk) // called before " 32(Src,bytes,Unit)=(%#lx,%#lx,%#lx)" in many places; see also hAddSuite
-                                      // maybe 0xe04ba536? Similar, except it returns void, not int.
-                                      // Also see 0xe04ba494, v. similar but diff struct offsets
 THUMB_FN(0xe04e3d82,  GetFirstChunkFromSuite)                  // AJ_PackMemory_PackMem_p3
 THUMB_FN(0xe04e4652,  GetNextMemoryChunk)                      // AJ_PackMemory_PackMem.c_IsChunkSignature_p2
 THUMB_FN(0xe04e3b9c,  GetMemoryAddressOfMemoryChunk)           // AJ_PackMemory_PackMem.c_IsChunkSignature - 200D uses "MemChunk" directly
 THUMB_FN(0xe066ab6e,  AllocateMemoryResource)                  // m_pfAllocMemoryCBR
 THUMB_FN(0xe066ab9c,  AllocateContinuousMemoryResource)        // m_pfContAllocMemoryCBR
 THUMB_FN(0xe066ac42,  FreeMemoryResource)                      // m_pfFreeMemoryCBR
-THUMB_FN(0xdf00b1d9,  msg_queue_receive) // "SystemIF::KerQueue.c" useful for finding some of these msg_ functions
 
+THUMB_FN(0xdf00b1d9,  msg_queue_receive) // "SystemIF::KerQueue.c" useful for finding some of these msg_ functions
+THUMB_FN(0xdf00b337,  msg_queue_post)
+THUMB_FN(0xdf00b36d,  msg_queue_count) // Fairly hard to find.  Often used near DispLockStop, which is easy to find
+                                       // and not used often.
+                                       // This is the thunked address, which is called from e042680c
+THUMB_FN(0xdf00b615,  msg_queue_create) // CreateMessageQueue - In 50D, msg_queue_create calls 0xff866424,
+                                        // the equiv of which is 0xdf00b114 (and was easier to find)
+
+THUMB_FN(0xe04e520c,  prop_deliver)
+THUMB_FN(0xe04e4ca6,  prop_register_slave) // "pRegisterSlave"
+THUMB_FN(0xe03a1c00,  LiveViewApp_handler) // not sure - function is quite different 50D -> 200D, but that
+                                        // doesn't seem unreasonable since large GUI changes.  String use and surrounding
+                                        // functions look similar / related.
+THUMB_FN(0xe0486f60,  PlayMain_handler) // "DlgPlayMain.c PRESS_ERASE_BUTTON" - code above the string, wasn't found automatically
+THUMB_FN(0xe03d5b1e,  GetCFnData) // Differs significantly from 200D
+THUMB_FN(0xe03d4c80,  SetCFnData) // There are some "SetCFnData" related strings
+
+THUMB_FN(0xe070a8ea, _malloc) // These two names are used in 50D and CONFIG_HELLO_WORLD won't build without them,
+THUMB_FN(0xe070a922, _free)   // however, the inital stubs for 200D call these simply malloc/free.
+                           // I'm leaving them defined with both names, although that seems wrong.
+THUMB_FN(0xe04f939a,  SRM_AllocateMemoryResourceFor1stJob) // "hJobMemorySuite" strings, function a little earlier
+THUMB_FN(0xe04fc23e,  SRM_FreeMemoryResourceFor1stJob) // find refs to "pMessage", there are several similar looking functions using it,
+                                                       // this is my best guess - this one has pPriorMessage and sets offset 8
+                                                       // in the struct to 0, offset 0x10 to param1
+THUMB_FN(0xe04e529e, _prop_cleanup) // "./Multicast/PropertyMgr.c" check funcs that ref this string
+THUMB_FN(0xdf00b67d,  CreateRecursiveLock) // via "KerRLock.c", CRL() calls a function that regs this string, not many do
+THUMB_FN(0xdf00b451,  AcquireRecursiveLock)
+THUMB_FN(0xdf00b51b,  ReleaseRecursiveLock)
+THUMB_FN(0xe04db03c,  dialog_redraw) // Found via checking xrefs to "pDialog->pSignature == pcSignature"
+THUMB_FN(0xe04aa630,  CreateResLockEntry) // via xrefs to a pointer to "ResInfo"
+THUMB_FN(0xe04aaa50,  LockEngineResources) //  Down a bit from CreateResLockEntry, start v similar but end is different.
+THUMB_FN(0xe076b928,  ErrForCamera_handler) // ERR70, ERR80 etc (DlgErrForCamera.c, AJ_DIALOG.HANDLER_DlgErrForCamera.c)
+
+THUMB_FN(0xdf00d365,  fsuDecodePartitionTable) // SJE FIXME wrong - this function doesn't exist on 6D2.  See longer notes in 200D stubs.S.
+                                               // I think bootflags.c code should be changed so we do this manually for these cams.
+
+THUMB_FN(0xe05f67d1,  ShootOlcApp_handler) // near "StopShootOlcApp PopPalette(%d)"
+//DATA_PTR(    0x40d0,  first_task) // unsure on naming here.  First item in an array of task structs.
+                                  // Seems to always be "idle" task.
+                                  // (we don't use this, but instead calculate it during early init,
+                                  //  to save backporting this stub for all older cams)
+NSTUB(    0x40f0,  task_max)
+NSTUB(    0xffc0,  gui_task_list) // Found in function 0xe06f0684.
+THUMB_FN(0xe06b4128, _LoadCalendarFromRTC)
+
+// These are required on Digic 678
+THUMB_FN(0xe04c76f4, RefreshVrmsSurface) // "Call RefreshVrmsSurface"
+DATA_PTR(   0x100cc, display_refresh_needed) // if 0, RefreshVrmsSurface() does nothing
+THUMB_FN(0xe022d5cc, XimrExe) // trigger Ximr unit to execute (HW compositor, partially understood)
 
 
 //////
