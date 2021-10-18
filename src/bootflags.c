@@ -10,15 +10,15 @@ struct cf_device
 {
     /* type b always reads from raw sectors */
     int (*read_block)(
-        struct cf_device * dev,
-        void * buf,
+        struct cf_device *dev,
+        void *buf,
         uintptr_t block,
         size_t num_blocks
     );
 
     int (*write_block)(
-        struct cf_device * dev,
-        const void * buf,
+        struct cf_device *dev,
+        const void *buf,
         uintptr_t block,
         size_t num_blocks
     );
@@ -29,35 +29,35 @@ struct cf_device
     void *null_2;
 #endif
 
-    void * io_control;
-    void * soft_reset;
+    void *io_control;
+    void *soft_reset;
 };
 #else
 struct cf_device
 {
     /* If block has the top bit set the physical blocks will be read instead of from the first partition.  Cool. */
     int (*read_block)(
-        struct cf_device * dev,
+        struct cf_device *dev,
         uintptr_t block,
         size_t num_blocks,
-        void * buf
+        void *buf
     );
 
     int (*write_block)(
-        struct cf_device * dev,
+        struct cf_device *dev,
         uintptr_t block,
         size_t num_blocks,
-        const void * buf
+        const void *buf
     );
     
-    void * io_control;
-    void * soft_reset;
+    void *io_control;
+    void *soft_reset;
 };
 
 #endif
 
-extern struct cf_device * const cf_device[];
-extern struct cf_device * const sd_device[];
+extern struct cf_device *const cf_device[];
+extern struct cf_device *const sd_device[];
 
 struct partition_table 
 {
@@ -86,7 +86,7 @@ static uint32_t VBRChecksum( unsigned char octets[], int NumberOfBytes) {
    return Checksum;
 }
 
-static void exfat_sum(uint32_t* buffer) // size: 12 sectors (0-11)
+static void exfat_sum(uint32_t *buffer) // size: 12 sectors (0-11)
 {
     int i=0;
     uint32_t sum;
@@ -109,17 +109,17 @@ bootflag_write_bootblock( void )
 {
 
 #if defined(CONFIG_7D)
-    struct cf_device * const dev = (struct cf_device *) cf_device[6];
+    struct cf_device *const dev = (struct cf_device *) cf_device[6];
 #elif defined(CONFIG_5D3)
     /* dual card slot */
     int ml_on_cf = (get_ml_card()->drive_letter[0] == 'A');
-    extern struct cf_device ** cf_device_ptr[];
-    struct cf_device * const dev = (struct cf_device *) (ml_on_cf ? cf_device_ptr[0][4] : sd_device[1]);
+    extern struct cf_device **cf_device_ptr[];
+    struct cf_device *const dev = (struct cf_device *) (ml_on_cf ? cf_device_ptr[0][4] : sd_device[1]);
 #elif defined(CONFIG_R)
     //kitor: R180 has a single pointer to device structure.
-    struct cf_device * const dev = (struct cf_device *) sd_device[0];
+    struct cf_device *const dev = (struct cf_device *) sd_device[0];
 #else
-    struct cf_device * const dev = (struct cf_device *) sd_device[1];
+    struct cf_device *const dev = (struct cf_device *) sd_device[1];
 #endif
 
     if (!dev)
@@ -134,7 +134,7 @@ bootflag_write_bootblock( void )
     dev->read_block( dev, block, 0, 1 );
 
     struct partition_table p;
-    extern void fsuDecodePartitionTable(void* partition_address_on_card, struct partition_table * ptable);
+    extern void fsuDecodePartitionTable(void *partition_address_on_card, struct partition_table *ptable);
     fsuDecodePartitionTable(block + 446, &p);
 
     //~ NotifyBox(1000, "decoded => %x,%x,%x", p.type, p.sectors_before_partition, p.sectors_in_partition);
@@ -157,7 +157,7 @@ bootflag_write_bootblock( void )
     }
     else if (p.type == 7) // ExFAT
     {
-        uint8_t* buffer = fio_malloc(512*24);
+        uint8_t *buffer = fio_malloc(512*24);
         dev->read_block( dev, buffer, p.sectors_before_partition, 24 );
 
         int off1 = 130;
@@ -190,9 +190,9 @@ int
 bootflag_write_bootblock( void )
 {
 #ifdef CONFIG_500D
-    struct cf_device * const dev = sd_device[1];
+    struct cf_device *const dev = sd_device[1];
 #elif defined(CONFIG_50D) || defined(CONFIG_5D2) || defined(CONFIG_40D) // not good for 40D, need checking
-    struct cf_device * const dev = cf_device[5];
+    struct cf_device *const dev = cf_device[5];
 #endif
     
     uint8_t *block = fio_malloc( 512 );
@@ -222,7 +222,7 @@ bootflag_write_bootblock( void )
     }
     else if( strncmp((const char*) block + 0x3, "EXFAT", 5) == 0 ) //check if this card is EXFAT
     {
-        uint8_t* buffer = fio_malloc(512*24);
+        uint8_t *buffer = fio_malloc(512*24);
         dev->read_block( dev, 0, 24, buffer );
         int off1 = 130;
         int off2 = 122;
