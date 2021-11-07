@@ -98,6 +98,7 @@ copy_and_restart( int offset )
     if (steal_from_user_size > ML_MAX_USER_MEM_STOLEN)
     {
         qprint("[BOOT] RESTARTSTART possibly unsafe, too much stolen from user_mem\n");
+        qprintn(steal_from_user_size);
         goto fail;
     }
 
@@ -144,8 +145,8 @@ copy_and_restart( int offset )
         goto fail;
 
     INSTR(PTR_SYS_OBJS_START) += sys_mem_offset_increase;
-    INSTR(HIJACK_FIXBR_BZERO32 + 8) = 0x1056f44f; // SJE FIXME this should be computed from sys_mem_offset_increase.
-                                                  // Currently this is hard-coded as +0x70000 over 0x2e8000
+    INSTR(HIJACK_FIXBR_BZERO32 + 8) = 0x105af44f; // SJE FIXME this should be computed from sys_mem_offset_increase.
+                                                  // Currently this is hard-coded as +0x80000 over 0x2e8000
     // see http://shell-storm.org/online/Online-Assembler-and-Disassembler/?inst=mov.w++++++r0%2C%230x358000%0D%0A&arch=arm-t&as_format=inline#assembly
 
     // Fix the calls to bzero32() and create_init_task()
