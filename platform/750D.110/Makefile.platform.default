@@ -8,7 +8,7 @@ ROMBASEADDR     = 0xFE0A0000
 # SJE hack: trying to move the copied Canon code to after
 # user_mem, so we can move sys_objs and sys_mem up,
 # and get more space.  D6 is hungry for RELOCSIZE :(
-RESTARTSTART    = 0x002a0df4
+RESTARTSTART    = 0x002a0e00
 
 # Cortex R4
 CFLAG_USER += -mlong-calls

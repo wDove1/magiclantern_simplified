@@ -31,7 +31,7 @@
                                        // I'm not very confident on this, early mem stuff is significantly
                                        // different on D6...
 
-#define ML_MAX_SYS_MEM_INCREASE 0x70000 // SJE: we require at least 0xb0000 given the large size of early
+#define ML_MAX_SYS_MEM_INCREASE 0x80000 // SJE: we require at least 0xb0000 given the large size of early
                                         // code on D6.  Pushing up sys_mem by this size has not yet
                                         // been tested!  Could be very dangerous.
 
