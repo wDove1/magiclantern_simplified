@@ -9,7 +9,7 @@
 static int my_init_task(int a, int b, int c, int d);
 
 /** This just goes into the bss */
-#define RELOCSIZE 0x2D100  // look in HIJACK macros for the highest address, and subtract ROMBASEADDR; 0x50000 was too much for 750D
+#define RELOCSIZE 0x3D100  // look in HIJACK macros for the highest address, and subtract ROMBASEADDR; 0x50000 was too much for 750D
 
 static uint32_t _reloc[ RELOCSIZE / 4 ];
 #define RELOCADDR ((uintptr_t) _reloc)
@@ -71,19 +71,82 @@ copy_and_restart( int offset )
      * calls bzero(), then loads bs_end and calls
      * create_init_task
      */
-    // Reserve memory at the end of malloc pool for our application
-    // Note: unlike most (all?) DIGIC 4/5 cameras,
-    // the malloc buffer is specified as start + size (not start + end)
-    // so we adjust both values in order to keep things close to the traditional ML boot process
-    // (alternative: we could adjust only the size, and place ML at the end of malloc buffer)
-    ml_reserved_mem = (uintptr_t) _bss_end - INSTR( HIJACK_INSTR_BSS_END );
+
+    // Reserve memory by reducing the user_mem pool and, if necessary for the
+    // requested size, moving up the start of sys_objs and sys_mem.
+    // ML goes in the gap.  RESTARTSTART defines the start address of the gap,
+    // ML_RESERVED_MEM the size.
+    ml_reserved_mem = ML_RESERVED_MEM;
+
+    // align up to 8, DryOS does this for the various mem regions
+    // that we are adjusting.
+    if (ml_reserved_mem % 8 != 0)
+        ml_reserved_mem += 8 - ml_reserved_mem % 8;
+
+    uint32_t sys_objs_start = *(int *)PTR_SYS_OBJS_START;
+    if (RESTARTSTART > sys_objs_start)
+    {   // I don't know of a reason to extend user_mem or leave a gap so this
+        // is probably a mistake.
+        qprint("[BOOT] unexpected RESTARTSTART address > sys_objs_start\n");
+        qprintn(RESTARTSTART);
+        qprintn(sys_objs_start);
+        goto fail;
+    }
+
+    // the RESTARTSTART > sys_objs_start guard means mem to steal from user will be positive
+    uint32_t steal_from_user_size = sys_objs_start - RESTARTSTART;
+    if (steal_from_user_size > ML_MAX_USER_MEM_STOLEN)
+    {
+        qprint("[BOOT] RESTARTSTART possibly unsafe, too much stolen from user_mem\n");
+        goto fail;
+    }
+
+    int32_t sys_mem_offset_increase = ml_reserved_mem - steal_from_user_size;
+    if (sys_mem_offset_increase < 0)
+    {
+        qprint("[BOOT] sys_mem_offset_increase was negative, shouldn't happen!\n");
+        goto fail;
+    }
+    if (sys_mem_offset_increase > ML_MAX_SYS_MEM_INCREASE)
+    {
+        qprint("[BOOT] sys_mem_offset_increase possibly unsafe, not tested this high, aborting\n");
+        qprintn(sys_mem_offset_increase);
+        goto fail;
+    }
+
     qprint("[BOOT] reserving memory: "); qprintn(ml_reserved_mem); qprint("\n");
-    qprint("before: user_mem_start = "); qprintn(INSTR( HIJACK_INSTR_BSS_END));
-    qprint("size = "); qprintn(INSTR( HIJACK_INSTR_BSS_END + 4 )); qprint("\n");
-    INSTR( HIJACK_INSTR_BSS_END     ) += ml_reserved_mem;
-    INSTR( HIJACK_INSTR_BSS_END + 4 ) -= ml_reserved_mem;
-    qprint(" after: user_mem_start = "); qprintn(INSTR( HIJACK_INSTR_BSS_END));
-    qprint("size = "); qprintn(INSTR( HIJACK_INSTR_BSS_END + 4 )); qprint("\n");
+    qprint("before: user_mem_size = "); qprintn(INSTR(PTR_USER_MEM_SIZE)); qprint("\n");
+
+    // shrink user_mem
+    INSTR(PTR_USER_MEM_SIZE) -= steal_from_user_size;
+    qprint(" after: user_mem_size = "); qprintn(INSTR(PTR_USER_MEM_SIZE)); qprint("\n");
+
+    // Move sys_objs and sys_mem later in ram.
+    // On D78, this is easier as the relevant constants are stored in mem.
+    // On D6, some are encoded directly in instructions, so we must patch.
+    //
+    // We expect the setup movs to be directly after HIJACK_FIXBR_BZERO32 address,
+    // like this:
+    //
+    // 01 f3 0c e8     blx        bzero_32     <--- this is HIJACK_FIXBR_BZERO32 address
+    // 4f f4 64 21     mov.w      r1,#0xe4000  <--- sys_mem_len (don't care, we don't change it)
+    // 4f f4 3a 10     mov.w      r0,#0x2e8000 <--- sys_mem_start and sys_objs_end
+    // 00 22           movs       r2,#0x0
+    // cd e9 01 01     strd       r0,r1,[sp,#0x4]
+    //
+    // Bad Things will likely occur if this is done incorrectly, so we check
+    // mem is as expected before proceeding.
+    if (*(int *)(HIJACK_FIXBR_BZERO32 + 4) != 0x2164f44f)
+        goto fail;
+    if (*(int *)(HIJACK_FIXBR_BZERO32 + 8) != 0x103af44f)
+        goto fail;
+    if (*(int *)(HIJACK_FIXBR_BZERO32 + 0xc) != 0xe9cd2200)
+        goto fail;
+
+    INSTR(PTR_SYS_OBJS_START) += sys_mem_offset_increase;
+    INSTR(HIJACK_FIXBR_BZERO32 + 8) = 0x1056f44f; // SJE FIXME this should be computed from sys_mem_offset_increase.
+                                                  // Currently this is hard-coded as +0x70000 over 0x2e8000
+    // see http://shell-storm.org/online/Online-Assembler-and-Disassembler/?inst=mov.w++++++r0%2C%230x358000%0D%0A&arch=arm-t&as_format=inline#assembly
 
     // Fix the calls to bzero32() and create_init_task()
     FIXUP_BRANCH( HIJACK_FIXBR_BZERO32, my_bzero32 );
@@ -104,6 +167,7 @@ copy_and_restart( int offset )
     reloc_entry();
 
     // Unreachable
+fail:
     while(1)
         ;
 }

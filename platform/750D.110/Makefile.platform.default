@@ -5,11 +5,10 @@ FIRMWARE_ID     = 0x80000393
 UPDATE_NAME_FIR = CCF23110.FIR
 ROMBASEADDR     = 0xFE0A0000
 
-# Shrink Canon's malloc heap by changing its start address (identical to 80D, 5D4)
-#          ("meminfo -m" in drysh)    ("memmap" in drysh)
-# Default: 0x001cc408 - 0x002e0c18, 001cc400 - 002e0df4 (total size 0x1149f4)
-# Patched: variable   - 0x002e0c18, variable - 002e0df4 (reserved according to autoexec.bin size + BSS)
-RESTARTSTART    = 0x001CC400
+# SJE hack: trying to move the copied Canon code to after
+# user_mem, so we can move sys_objs and sys_mem up,
+# and get more space.  D6 is hungry for RELOCSIZE :(
+RESTARTSTART    = 0x002a0df4
 
 # Cortex R4
 CFLAG_USER += -mlong-calls

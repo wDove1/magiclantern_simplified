@@ -8,8 +8,36 @@
 
 #define HIJACK_FIXBR_BZERO32        0xfe0cd00a   /* blx bzero32 in cstart*/
 #define HIJACK_FIXBR_CREATE_ITASK   0xfe0cd05e   /* blx create_init_task at the very end*/
-#define HIJACK_INSTR_BSS_END        0xfe0cd078
 #define HIJACK_INSTR_MY_ITASK       0xfe0cd084   /* pointer to address of init_task passed to create_init_task */
+
+// Memory stealing stuff, for making space to put ML into.
+//
+// D6 doesn't have as many memory constants in a nice table, compared to D78.
+// Instead, we must patch an instruction to change sys_mem_start. Conveniently,
+// that instruction is very close to HIJACK_FIXBR_BZERO32.
+// sys_objs_end is set (indirectly) by the same instruction.
+//
+// asm looks like this:
+// 01 f3 0c e8     blx        bzero_32     <--- this is HIJACK_FIXBR_BZERO32 address
+// 4f f4 64 21     mov.w      r1,#0xe4000  <--- sys_mem_len (don't care, we don't change it)
+// 4f f4 3a 10     mov.w      r0,#0x2e8000 <--- sys_mem_start and sys_objs_end
+// 00 22           movs       r2,#0x0
+//
+// Patching happens in boot-d6.c
+#define PTR_USER_MEM_SIZE           0xfe0cd078
+#define PTR_SYS_OBJS_START          0xfe0cd080
+
+#define ML_MAX_USER_MEM_STOLEN 0x40000 // SJE: let's assume D6 can steal the same as D78 from user_mem
+                                       // I'm not very confident on this, early mem stuff is significantly
+                                       // different on D6...
+
+#define ML_MAX_SYS_MEM_INCREASE 0x70000 // SJE: we require at least 0xb0000 given the large size of early
+                                        // code on D6.  Pushing up sys_mem by this size has not yet
+                                        // been tested!  Could be very dangerous.
+
+#define ML_RESERVED_MEM 0xb0000 // Can be lower than ML_MAX_USER_MEM_STOLEN + ML_MAX_SYS_MEM_INCREASE,
+                                // but must not be higher; sys_objs would get overwritten by ML code.
+                                // Must be larger than MemSiz reported by build for magiclantern.bin
 
 /* "Malloc Information" */
 #define MALLOC_STRUCT 0x42358                    // from get_malloc_info, helper of malloc_info
