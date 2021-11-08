@@ -24,7 +24,7 @@
 // 00 22           movs       r2,#0x0
 //
 // Patching happens in boot-d6.c
-#define PTR_USER_MEM_SIZE           0xfe0cd078
+#define PTR_USER_MEM_SIZE           0xfe0cd07c
 #define PTR_SYS_OBJS_START          0xfe0cd080
 
 #define ML_MAX_USER_MEM_STOLEN 0x40000 // SJE: let's assume D6 can steal the same as D78 from user_mem
